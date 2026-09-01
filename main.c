@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #define WIDTH 30
 #define HEIGHT 15
 void printBoard(char board[HEIGHT][WIDTH])
@@ -30,10 +31,6 @@ void initBoard(char board[HEIGHT][WIDTH])
         for (int col = 0; col < WIDTH; col++)
         {
             board[row][col] = ' ';
-            if (row == HEIGHT - 1)
-            {
-                board[row][col] = '-';
-            }
             if (row == 0)
             {
                 board[row][col] = '-';
@@ -52,13 +49,14 @@ void movePieces(char board[HEIGHT][WIDTH])
 {
     int pieceX = 1;
     int pieceY = 1;
-    for (int row = 1; row < HEIGHT; row++)
+    for (int row = 0; row < HEIGHT; row++)
     {
         clearBoard(board);
         board[pieceY][pieceX] = '#';
         printf("\033[H\033[J");
         printBoard(board);
         pieceY++;
+        usleep(100000);
     }
 }
 
