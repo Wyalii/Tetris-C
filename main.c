@@ -1,30 +1,47 @@
 #include <stdio.h>
-#define WIDTH 10
-#define HEIGHT 20
+#define WIDTH 30
+#define HEIGHT 15
+void printBoard(char board[HEIGHT][WIDTH])
+{
+    for (int row = 0; row < HEIGHT; row++)
+    {
+        for (int col = 0; col < WIDTH; col++)
+        {
+            printf("%c", board[row][col]);
+        }
+
+        printf("\n");
+    }
+}
+void initBoard(char board[HEIGHT][WIDTH])
+{
+    for (int row = 0; row < HEIGHT; row++)
+    {
+        for (int col = 0; col < WIDTH; col++)
+        {
+            board[row][col] = ' ';
+            if (row == HEIGHT - 1)
+            {
+                board[row][col] = '-';
+            }
+            if (row == 0)
+            {
+                board[row][col] = '-';
+            }
+        }
+    }
+
+    for (int row = 0; row < HEIGHT; row++)
+    {
+        board[row][0] = '|';
+        board[row][29] = '|';
+    }
+}
 int main()
 {
     char board[HEIGHT][WIDTH];
-
-    for (int row = 0; row < 5; row++)
-    {
-        // left wall
-        printf("|");
-        for (int col = 0; col < 10; col++)
-        {
-            if (row == 0 || row == 4)
-            {
-                printf("-");
-            }
-            else
-            {
-                printf(" ");
-            }
-        }
-        printf("|");
-        printf("\n");
-
-        // right walll
-    }
+    initBoard(board);
+    printBoard(board);
 
     return 0;
 }
