@@ -13,6 +13,16 @@ void printBoard(char board[HEIGHT][WIDTH])
         printf("\n");
     }
 }
+void clearBoard(char board[HEIGHT][WIDTH])
+{
+    for (int row = 1; row < HEIGHT - 1; row++)
+    {
+        for (int col = 1; col < WIDTH - 1; col++)
+        {
+            board[row][col] = ' ';
+        }
+    }
+}
 void initBoard(char board[HEIGHT][WIDTH])
 {
     for (int row = 0; row < HEIGHT; row++)
@@ -37,11 +47,26 @@ void initBoard(char board[HEIGHT][WIDTH])
         board[row][29] = '|';
     }
 }
+
+void movePieces(char board[HEIGHT][WIDTH])
+{
+    int pieceX = 1;
+    int pieceY = 1;
+    for (int row = 1; row < HEIGHT; row++)
+    {
+        clearBoard(board);
+        board[pieceY][pieceX] = '#';
+        printf("\033[H\033[J");
+        printBoard(board);
+        pieceY++;
+    }
+}
+
 int main()
 {
     char board[HEIGHT][WIDTH];
     initBoard(board);
-    printBoard(board);
+    movePieces(board);
 
     return 0;
 }
