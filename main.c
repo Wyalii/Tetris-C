@@ -1,7 +1,14 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #define WIDTH 30
 #define HEIGHT 15
+
+// Utility
+int randomXPosition()
+{
+    return 1 + rand() % (WIDTH - 2);
+}
 
 // Board
 
@@ -53,7 +60,6 @@ void initBoard(char board[HEIGHT][WIDTH])
 
 void renderFrame(char board[HEIGHT][WIDTH])
 {
-
     printBoard(board);
 }
 
@@ -78,6 +84,7 @@ void fillBlock(char board[HEIGHT][WIDTH], int x, int y)
 
 void renderObject(char board[HEIGHT][WIDTH], int x, int y)
 {
+    // we clear terminal before filling block function
     printf("\033[H\033[J");
     fillBlock(board, x, y);
     usleep(100000);
@@ -109,6 +116,8 @@ void moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH
         }
         else
         {
+            // if object stops falling we update locked board.
+            fillBlock(lockedBoard, x, y);
             return;
         }
     }
@@ -119,7 +128,11 @@ int main()
     char lockedBoard[HEIGHT][WIDTH];
     char displayBoard[HEIGHT][WIDTH];
     initBoard(lockedBoard);
-    moveObject(lockedBoard, displayBoard, 1, 5);
+    for (int i = 0; i < 10; i++)
+    {
+        int newX = randomXPosition();
+        moveObject(lockedBoard, displayBoard, newX, 2);
+    }
 
     return 0;
 }
