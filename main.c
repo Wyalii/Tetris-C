@@ -12,16 +12,17 @@ int randomXPosition()
 
 // Board
 
-void clearBoard(char board[HEIGHT][WIDTH])
-{
-    for (int row = 1; row < HEIGHT - 1; row++)
-    {
-        for (int col = 1; col < WIDTH - 1; col++)
-        {
-            board[row][col] = ' ';
-        }
-    }
-}
+// void clearBoard(char board[HEIGHT][WIDTH])
+// {
+//     for (int row = 1; row < HEIGHT - 1; row++)
+//     {
+//         for (int col = 1; col < WIDTH - 1; col++)
+//         {
+//             board[row][col] = ' ';
+//         }
+//     }
+// }
+
 void printBoard(char board[HEIGHT][WIDTH])
 {
     for (int row = 0; row < HEIGHT; row++)
@@ -60,7 +61,9 @@ void initBoard(char board[HEIGHT][WIDTH])
 
 void renderFrame(char board[HEIGHT][WIDTH])
 {
+    printf("\033[H\033[J");
     printBoard(board);
+    usleep(99999);
 }
 
 // Objects
@@ -82,15 +85,15 @@ void fillBlock(char board[HEIGHT][WIDTH], int x, int y)
     board[y][x] = '#';
 }
 
-void renderObject(char board[HEIGHT][WIDTH], int x, int y)
+void fillOPiece(char board[HEIGHT][WIDTH], int x, int y)
 {
-    // we clear terminal before filling block function
-    printf("\033[H\033[J");
-    fillBlock(board, x, y);
-    usleep(100000);
+    board[y][x] = '#';
+    board[y][x + 1] = '#';
+    board[y + 1][x] = '#';
+    board[y + 1][x + 1] = '#';
 }
 
-void moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], int x, int y)
+int moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], int x, int y)
 {
     for (int row = 0; row < HEIGHT; row++)
     {
@@ -104,23 +107,25 @@ void moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH
         }
 
         // putting new piece into display board
-        renderObject(displayBoard, x, y);
+        fillOPiece(displayBoard, x, y);
 
         // printing display board
         renderFrame(displayBoard);
 
         // checking if next block is avaialable for falling object
-        if (checkBlock(lockedBoard, x, y) == 0)
+        if (checkBlock(lockedBoard, x, y + 1) == 0)
         {
             y++;
         }
         else
         {
             // if object stops falling we update locked board.
+            printf("Landed at row: %d\n", y);
             fillBlock(lockedBoard, x, y);
-            return;
+            return 1;
         }
     }
+    return 0;
 }
 
 int main()
@@ -128,11 +133,8 @@ int main()
     char lockedBoard[HEIGHT][WIDTH];
     char displayBoard[HEIGHT][WIDTH];
     initBoard(lockedBoard);
-    for (int i = 0; i < 10; i++)
-    {
-        int newX = randomXPosition();
-        moveObject(lockedBoard, displayBoard, newX, 2);
-    }
+    int result = moveObject(lockedBoard, displayBoard, randomXPosition(), 1);
+    printf("Piece landed: %d\n", result);
 
     return 0;
 }
