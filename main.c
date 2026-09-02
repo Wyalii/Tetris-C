@@ -61,7 +61,7 @@ void renderFrame(char board[HEIGHT][WIDTH])
 
 int checkBlock(char board[HEIGHT][WIDTH], int x, int y)
 {
-    if (board[y + 1][x] == '#')
+    if (board[y + 1][x] == '#' || board[y + 1][x] == '-')
     {
         return 1;
     }
@@ -119,7 +119,7 @@ int main()
     char lockedBoard[HEIGHT][WIDTH];
     char displayBoard[HEIGHT][WIDTH];
     initBoard(lockedBoard);
-    moveObject(lockedBoard, displayBoard, 1, 1);
+    moveObject(lockedBoard, displayBoard, 1, 5);
 
     return 0;
 }
