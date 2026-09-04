@@ -1,15 +1,59 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
 #define PIECE_SIZE 4
 #define WIDTH 30
 #define HEIGHT 15
+#define NUM_PIECES 7
 
 // Utility
 int randomXPosition()
 {
-    return 1 + rand() % (WIDTH - 2);
+    return 1 + rand() % (WIDTH - 2 - PIECE_SIZE);
 }
+int randomPiece()
+{
+    return rand() % NUM_PIECES;
+}
+
+char pieces[NUM_PIECES][PIECE_SIZE * PIECE_SIZE + 1] = {
+    // + for for null terminator '\0'
+    "...."
+    ".XX."
+    ".XX."
+    "....", // index 0: O piece
+
+    "...."
+    ".X.."
+    "XXX."
+    "....", // index 1: T piece
+
+    "...."
+    "..X."
+    "..X."
+    "..X.", // 2: I piece (vertical, since it's easier to fit in 4x4 this way for now)
+
+    "...."
+    ".XX."
+    "..X."
+    "..X.", // 3: S piece
+
+    "...."
+    "..X."
+    ".XX."
+    ".X..", // 4: Z piece
+
+    "...."
+    ".X.."
+    ".X.."
+    ".XX.", // 5: L piece
+
+    "...."
+    "..X."
+    "..X."
+    ".XX.", // 6: J piece
+};
 
 // Board
 
@@ -69,22 +113,22 @@ void renderFrame(char board[HEIGHT][WIDTH])
 
 // Objects
 
-int checkBlock(char board[HEIGHT][WIDTH], int x, int y)
-{
-    if (board[y + 1][x] == '#' || board[y + 1][x] == '-')
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
-}
+// int checkBlock(char board[HEIGHT][WIDTH], int x, int y)
+// {
+//     if (board[y + 1][x] == '#' || board[y + 1][x] == '-')
+//     {
+//         return 1;
+//     }
+//     else
+//     {
+//         return 0;
+//     }
+// }
 
-void fillBlock(char board[HEIGHT][WIDTH], int x, int y)
-{
-    board[y][x] = '#';
-}
+// void fillBlock(char board[HEIGHT][WIDTH], int x, int y)
+// {
+//     board[y][x] = '#';
+// }
 void fillPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
 {
     for (int py = 0; py < 4; py++)
@@ -117,10 +161,10 @@ int checkPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
     return 0;
 }
 
-void lockPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
-{
-    fillPiece(board, piece, x, y);
-}
+// void lockPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
+// {
+//     fillPiece(board, piece, x, y);
+// }
 
 int moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], int x, int y)
 {
@@ -149,7 +193,7 @@ int moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH]
         else
         {
             // if object stops falling we update locked board.
-            lockPiece(lockedBoard, piece, x, y);
+            fillPiece(lockedBoard, piece, x, y);
             return 1;
         }
     }
@@ -161,12 +205,12 @@ int main()
     char lockedBoard[HEIGHT][WIDTH];
     char displayBoard[HEIGHT][WIDTH];
     initBoard(lockedBoard);
-    char oPiece[PIECE_SIZE * PIECE_SIZE + 1] =
-        "...."
-        ".XX."
-        ".XX."
-        "....";
-    int result = moveObject(lockedBoard, displayBoard, oPiece, randomXPosition(), 1);
+    srand(time(NULL));
+    for (int i = 0; i < 5; i++)
+    {
+        int pieceIndex = randomPiece();
+        int result = moveObject(lockedBoard, displayBoard, pieces[pieceIndex], randomXPosition(), 1);
+    }
 
     return 0;
 }
