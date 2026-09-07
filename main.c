@@ -300,6 +300,7 @@ int main()
         obj.y = 1;
         obj.x = randomXPosition();
         int pieceIndex = randomPiece();
+        tcflush(STDIN_FILENO, TCIFLUSH); // this func is used to clear input queue.
         if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj) != 0)
         {
             isRunning = 1;
