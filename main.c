@@ -2,12 +2,21 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <termios.h>
 #define PIECE_SIZE 4
 #define WIDTH 30
 #define HEIGHT 15
 #define NUM_PIECES 7
 
 // Utility
+struct object
+{
+    int x;
+    int y;
+};
+static struct termios orig_termios;
+int isRunning = 1;
+
 int randomXPosition()
 {
     return 1 + rand() % (WIDTH - 2 - PIECE_SIZE);
@@ -57,17 +66,6 @@ char pieces[NUM_PIECES][PIECE_SIZE * PIECE_SIZE + 1] = {
 
 // Board
 
-// void clearBoard(char board[HEIGHT][WIDTH])
-// {
-//     for (int row = 1; row < HEIGHT - 1; row++)
-//     {
-//         for (int col = 1; col < WIDTH - 1; col++)
-//         {
-//             board[row][col] = ' ';
-//         }
-//     }
-// }
-
 void printBoard(char board[HEIGHT][WIDTH])
 {
     for (int row = 0; row < HEIGHT; row++)
@@ -111,24 +109,19 @@ void renderFrame(char board[HEIGHT][WIDTH])
     usleep(99999);
 }
 
+void rebuildDisplayBoard(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH])
+{
+    for (int r = 0; r < HEIGHT; r++)
+    {
+        for (int c = 0; c < WIDTH; c++)
+        {
+            displayBoard[r][c] = lockedBoard[r][c];
+        }
+    }
+}
+
 // Objects
 
-// int checkBlock(char board[HEIGHT][WIDTH], int x, int y)
-// {
-//     if (board[y + 1][x] == '#' || board[y + 1][x] == '-')
-//     {
-//         return 1;
-//     }
-//     else
-//     {
-//         return 0;
-//     }
-// }
-
-// void fillBlock(char board[HEIGHT][WIDTH], int x, int y)
-// {
-//     board[y][x] = '#';
-// }
 void fillPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
 {
     for (int py = 0; py < 4; py++)
@@ -161,56 +154,161 @@ int checkPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
     return 0;
 }
 
-// void lockPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
-// {
-//     fillPiece(board, piece, x, y);
-// }
+int moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
+{
 
-int moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], int x, int y)
+    // rebuilding display board here
+    rebuildDisplayBoard(lockedBoard, displayBoard);
+    // putting new piece into display board
+    fillPiece(displayBoard, piece, obj->x, obj->y);
+
+    // printing display board
+    renderFrame(displayBoard);
+
+    // checking if next block is avaialable for falling object
+    if (checkPiece(lockedBoard, piece, obj->x, obj->y + 1) == 0)
+    {
+        obj->y++;
+    }
+    else
+    {
+        // if object stops falling we update locked board.
+        fillPiece(lockedBoard, piece, obj->x, obj->y);
+        return 1;
+    }
+
+    return 0;
+}
+
+char checkUserInput(char c)
+{
+    if (c == 'a')
+    {
+        return 'a';
+    }
+    if (c == 'd')
+    {
+        return 'd';
+    }
+    if (c == 'w')
+    {
+        return 'w';
+    }
+    if (c == 's')
+    {
+        return 's';
+    }
+    return ' ';
+}
+
+// TERMINAL
+
+void error(char *message)
+{
+    fprintf(stderr, "error error: %s\n", message);
+    exit(1);
+}
+
+void enableRawSettings()
+{
+    struct termios raw = orig_termios;
+    /* input modes - clear indicated ones giving: no break, no CR to NL,
+       no parity check, no strip char, no start/stop output (sic) control */
+    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+
+    /* control modes - set 8 bit chars */
+    raw.c_cflag |= (CS8);
+
+    /* local modes - clear giving: echoing off, canonical off (no erase with
+       backspace, ^U,...),  no extended functions, no signal chars (^Z,^C) */
+    raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+
+    /* control chars - set return condition: min number of bytes and timer */
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 8; /* after a byte or .8 seconds */
+
+    /* put terminal in raw mode after flushing */
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
+        error("can't set raw mode");
+}
+
+void enableRawMode()
+{
+    if (tcgetattr(STDIN_FILENO, &orig_termios) != -1)
+    {
+        enableRawSettings();
+    }
+    else
+    {
+        error("error while setting original termios");
+    }
+}
+
+void disableRawMode()
+{
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) != -1)
+    {
+        printf("SAYONARA <33\n");
+    }
+    else
+    {
+        error("error on disable raw mode function.");
+    }
+}
+
+int userControllPanel(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char userInput, int pieceIndex, struct object *obj)
 {
     for (int row = 0; row < HEIGHT; row++)
     {
-        // rebuilding display board here
-        for (int r = 0; r < HEIGHT; r++)
+
+        if (moveObject(lockedBoard, displayBoard, pieces[pieceIndex], obj) != 1)
         {
-            for (int c = 0; c < WIDTH; c++)
+            read(STDIN_FILENO, &userInput, 1);
+            if (userInput == 'q')
             {
-                displayBoard[r][c] = lockedBoard[r][c];
+                disableRawMode();
+                isRunning = 0;
+                return 0;
+            }
+            char key = checkUserInput(userInput);
+            switch (key)
+            {
+            case 'a':
+                obj->x -= 1;
+                moveObject(lockedBoard, displayBoard, pieces[pieceIndex], obj);
+                break;
+
+            default:
+                break;
             }
         }
-
-        // putting new piece into display board
-        fillPiece(displayBoard, piece, x, y);
-
-        // printing display board
-        renderFrame(displayBoard);
-
-        // checking if next block is avaialable for falling object
-        if (checkPiece(lockedBoard, piece, x, y + 1) == 0)
-        {
-            y++;
-        }
-        else
-        {
-            // if object stops falling we update locked board.
-            fillPiece(lockedBoard, piece, x, y);
-            return 1;
-        }
     }
-    return 0;
 }
 
 int main()
 {
+
     char lockedBoard[HEIGHT][WIDTH];
     char displayBoard[HEIGHT][WIDTH];
     initBoard(lockedBoard);
     srand(time(NULL));
-    for (int i = 0; i < 5; i++)
+    enableRawMode();
+    char userInput = ' ';
+    while (isRunning)
     {
+        struct object obj;
+        obj.y = 1;
+        obj.x = randomXPosition();
         int pieceIndex = randomPiece();
-        int result = moveObject(lockedBoard, displayBoard, pieces[pieceIndex], randomXPosition(), 1);
+        if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj) != 0)
+        {
+            isRunning = 1;
+        }
+        else
+        {
+            isRunning = 0;
+            return 0;
+        }
     }
-
     return 0;
 }
