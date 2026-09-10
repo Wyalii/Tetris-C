@@ -100,26 +100,6 @@ void initBoard(char board[HEIGHT][WIDTH])
     }
 }
 
-// RENDER
-
-void renderFrame(char board[HEIGHT][WIDTH])
-{
-    printf("\033[H\033[J");
-    printBoard(board);
-    usleep(99999);
-}
-
-void rebuildDisplayBoard(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH])
-{
-    for (int r = 0; r < HEIGHT; r++)
-    {
-        for (int c = 0; c < WIDTH; c++)
-        {
-            displayBoard[r][c] = lockedBoard[r][c];
-        }
-    }
-}
-
 // Objects
 
 void fillPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
@@ -146,39 +126,102 @@ int checkPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
             {
                 if (board[y + py][x + px] != ' ')
                 {
-                    return 1;
+                    return -1;
                 }
             }
         }
     }
-    return 0;
+    return 1;
 }
 
-int moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
+// int moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
+// {
+
+//     // rebuilding display board here
+//     rebuildDisplayBoard(lockedBoard, displayBoard);
+
+//     // putting new piece into display board
+//     fillPiece(displayBoard, piece, obj->x, obj->y);
+
+//     // printing display board
+//     // renderFrame(displayBoard);
+
+//     return 0;
+// }
+
+int objectFall(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
 {
-
-    // rebuilding display board here
-    rebuildDisplayBoard(lockedBoard, displayBoard);
-    // putting new piece into display board
-    fillPiece(displayBoard, piece, obj->x, obj->y);
-
-    // printing display board
-    renderFrame(displayBoard);
-
     // checking if next block is avaialable for falling object
-    if (checkPiece(lockedBoard, piece, obj->x, obj->y + 1) == 0)
+    if (checkPiece(lockedBoard, piece, obj->x, obj->y + 1) == 1)
     {
+
         obj->y++;
+        return 1;
     }
     else
     {
         // if object stops falling we update locked board.
         fillPiece(lockedBoard, piece, obj->x, obj->y);
+        return -1;
+    }
+}
+int objectRight(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
+{
+    if (checkPiece(lockedBoard, piece, obj->x + 1, obj->y) == 1)
+    {
+
+        obj->x++;
         return 1;
     }
-
-    return 0;
+    else
+    {
+        // if object stops falling we update locked board.
+        fillPiece(lockedBoard, piece, obj->x, obj->y);
+        return -1;
+    }
 }
+int objectLeft(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
+{
+    if (checkPiece(lockedBoard, piece, obj->x - 1, obj->y) == 0)
+    {
+
+        obj->x--;
+        return 1;
+    }
+    else
+    {
+        // if object stops falling we update locked board.
+        fillPiece(lockedBoard, piece, obj->x, obj->y);
+        return -1;
+    }
+}
+
+// RENDER
+
+void rebuildDisplayBoard(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH])
+{
+    for (int r = 0; r < HEIGHT; r++)
+    {
+        for (int c = 0; c < WIDTH; c++)
+        {
+            displayBoard[r][c] = lockedBoard[r][c];
+        }
+    }
+}
+void renderFrame(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
+{
+    // rebuilding display board here
+    rebuildDisplayBoard(lockedBoard, displayBoard);
+
+    // putting new piece into display board
+    fillPiece(displayBoard, piece, obj->x, obj->y);
+
+    printf("\033[H\033[J");
+    printBoard(displayBoard);
+    usleep(99999);
+}
+
+// TERMINAL
 
 char checkUserInput(char c)
 {
@@ -200,8 +243,6 @@ char checkUserInput(char c)
     }
     return ' ';
 }
-
-// TERMINAL
 
 void error(char *message)
 {
@@ -260,29 +301,47 @@ int userControllPanel(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT]
 {
     for (int row = 0; row < HEIGHT; row++)
     {
-
-        if (moveObject(lockedBoard, displayBoard, pieces[pieceIndex], obj) != 1)
+        renderFrame(lockedBoard, displayBoard, pieces[pieceIndex], obj);
+        objectFall(lockedBoard, pieces[pieceIndex], obj);
+        if (read(STDIN_FILENO, &userInput, 1) != 0)
         {
-            read(STDIN_FILENO, &userInput, 1);
             if (userInput == 'q')
             {
                 disableRawMode();
                 isRunning = 0;
-                return 0;
+                return -1;
             }
             char key = checkUserInput(userInput);
             switch (key)
             {
             case 'a':
-                obj->x -= 1;
-                moveObject(lockedBoard, displayBoard, pieces[pieceIndex], obj);
+                if (objectLeft(lockedBoard, pieces[pieceIndex], obj) == -1)
+                {
+                    return -1;
+                }
+                break;
+            case 'd':
+                if (objectRight(lockedBoard, pieces[pieceIndex], obj) == -1)
+                {
+                    return -1;
+                }
+                break;
+
+            case 's':
+                if (objectFall(lockedBoard, pieces[pieceIndex], obj) == -1)
+                {
+                    return -1;
+                }
                 break;
 
             default:
+                return -1;
                 break;
             }
         }
     }
+
+    return 1;
 }
 
 int main()
@@ -301,7 +360,7 @@ int main()
         obj.x = randomXPosition();
         int pieceIndex = randomPiece();
         tcflush(STDIN_FILENO, TCIFLUSH); // this func is used to clear input queue.
-        if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj) != 0)
+        if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj) == -1)
         {
             isRunning = 1;
         }
