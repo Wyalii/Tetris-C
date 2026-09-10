@@ -302,7 +302,11 @@ int userControllPanel(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT]
     for (int row = 0; row < HEIGHT; row++)
     {
         renderFrame(lockedBoard, displayBoard, pieces[pieceIndex], obj);
-        objectFall(lockedBoard, pieces[pieceIndex], obj);
+        if (objectFall(lockedBoard, pieces[pieceIndex], obj) == -1)
+        {
+            break;
+        }
+
         if (read(STDIN_FILENO, &userInput, 1) != 0)
         {
             if (userInput == 'q')
@@ -344,20 +348,23 @@ int main()
     srand(time(NULL));
     enableRawMode();
     char userInput = ' ';
-    while (isRunning)
+
+    while (isRunning == 1)
     {
         struct object obj;
-        obj.y = 1;
+        obj.y = 0;
         obj.x = randomXPosition();
         int pieceIndex = randomPiece();
         tcflush(STDIN_FILENO, TCIFLUSH); // this func is used to clear input queue.
         if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj) != -1)
         {
+
             isRunning = 1;
         }
         else
         {
             isRunning = 0;
+            disableRawMode();
             return 0;
         }
     }
