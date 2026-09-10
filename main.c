@@ -182,7 +182,7 @@ int objectRight(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *
 }
 int objectLeft(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
 {
-    if (checkPiece(lockedBoard, piece, obj->x - 1, obj->y) == 0)
+    if (checkPiece(lockedBoard, piece, obj->x - 1, obj->y) == 1)
     {
 
         obj->x--;
@@ -315,23 +315,14 @@ int userControllPanel(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT]
             switch (key)
             {
             case 'a':
-                if (objectLeft(lockedBoard, pieces[pieceIndex], obj) == -1)
-                {
-                    return -1;
-                }
+                objectLeft(lockedBoard, pieces[pieceIndex], obj);
                 break;
             case 'd':
-                if (objectRight(lockedBoard, pieces[pieceIndex], obj) == -1)
-                {
-                    return -1;
-                }
+                objectRight(lockedBoard, pieces[pieceIndex], obj);
                 break;
 
             case 's':
-                if (objectFall(lockedBoard, pieces[pieceIndex], obj) == -1)
-                {
-                    return -1;
-                }
+                objectFall(lockedBoard, pieces[pieceIndex], obj);
                 break;
 
             default:
@@ -360,7 +351,7 @@ int main()
         obj.x = randomXPosition();
         int pieceIndex = randomPiece();
         tcflush(STDIN_FILENO, TCIFLUSH); // this func is used to clear input queue.
-        if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj) == -1)
+        if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj) != -1)
         {
             isRunning = 1;
         }
