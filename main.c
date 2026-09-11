@@ -4,8 +4,8 @@
 #include <time.h>
 #include <termios.h>
 #define PIECE_SIZE 4
-#define WIDTH 30
-#define HEIGHT 15
+#define WIDTH 11
+#define HEIGHT 21
 #define NUM_PIECES 7
 
 // Utility
@@ -41,7 +41,7 @@ char pieces[NUM_PIECES][PIECE_SIZE * PIECE_SIZE + 1] = {
     "...."
     "..X."
     "..X."
-    "..X.", // 2: I piece (vertical, since it's easier to fit in 4x4 this way for now)
+    "..X.", // 2: I piece
 
     "...."
     ".XX."
@@ -96,10 +96,42 @@ void initBoard(char board[HEIGHT][WIDTH])
     for (int row = 0; row < HEIGHT; row++)
     {
         board[row][0] = '|';
-        board[row][29] = '|';
+        board[row][WIDTH - 1] = '|';
     }
 }
 
+void checkBoardRows(char lockedBoard[HEIGHT][WIDTH])
+{
+    // so we start outer loop that equals 13 with i--
+    // create isfull variable
+    // inner loop that equals one and is less than width - 1
+    // on each iteration we check if cells fo board euqls #
+    // if they dont we make is full 0
+    // we have another check after row finishes that checks if is full is 1
+    // if it is 1 we have another double loop that iterates board from top to bottom again
+    // on each iteration of inner col loop we make current row equal to row below it
+    for (int i = HEIGHT - 2; i > 1; i--)
+    {
+        int isFull = 1;
+        for (int j = 1; j < WIDTH - 1; j++)
+        {
+            if (lockedBoard[i][j] != '#')
+            {
+                isFull = 0;
+            }
+        }
+        if (isFull == 1)
+        {
+            for (int row = i; row > 1; row--)
+            {
+                for (int col = 1; col < WIDTH - 1; col++)
+                {
+                    lockedBoard[row][col] = lockedBoard[row - 1][col];
+                }
+            }
+        }
+    }
+}
 // Objects
 
 void fillPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
@@ -134,21 +166,6 @@ int checkPiece(char board[HEIGHT][WIDTH], char piece[16], int x, int y)
     return 1;
 }
 
-// int moveObject(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
-// {
-
-//     // rebuilding display board here
-//     rebuildDisplayBoard(lockedBoard, displayBoard);
-
-//     // putting new piece into display board
-//     fillPiece(displayBoard, piece, obj->x, obj->y);
-
-//     // printing display board
-//     // renderFrame(displayBoard);
-
-//     return 0;
-// }
-
 int objectFall(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
 {
     // checking if next block is avaialable for falling object
@@ -156,11 +173,13 @@ int objectFall(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *o
     {
 
         obj->y++;
+
         return 1;
     }
     else
     {
         // if object stops falling we update locked board.
+
         fillPiece(lockedBoard, piece, obj->x, obj->y);
         return -1;
     }
@@ -194,6 +213,31 @@ int objectLeft(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *o
         fillPiece(lockedBoard, piece, obj->x, obj->y);
         return -1;
     }
+}
+
+int rotate90(char piece[16])
+{
+    char tempPiece[16] = "...............";
+    // loop throu piece find where Xs are and generate new index with 90 degree formula.
+    // creates temp array
+    for (int py = 0; py < 4; py++)
+    {
+        for (int px = 0; px < 4; px++)
+        {
+            if (piece[py * 4 + px] == 'X')
+            {
+                int newIndex = px * 4 + (3 - py);
+                tempPiece[newIndex] = piece[py * 4 + px];
+            }
+        }
+    }
+    // ovveriting old array with new elements
+    for (int i = 0; i < 16; i++)
+    {
+        piece[i] = tempPiece[i];
+    }
+
+    return 1;
 }
 
 // RENDER
@@ -244,12 +288,6 @@ char checkUserInput(char c)
     return ' ';
 }
 
-void error(char *message)
-{
-    fprintf(stderr, "error error: %s\n", message);
-    exit(1);
-}
-
 void enableRawSettings()
 {
     struct termios raw = orig_termios;
@@ -266,7 +304,7 @@ void enableRawSettings()
 
     /* control chars - set return condition: min number of bytes and timer */
     raw.c_cc[VMIN] = 0;
-    raw.c_cc[VTIME] = 8; /* after a byte or .8 seconds */
+    raw.c_cc[VTIME] = 5; /* after a byte or .8 seconds */
 
     /* put terminal in raw mode after flushing */
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
@@ -302,6 +340,7 @@ int userControllPanel(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT]
     for (int row = 0; row < HEIGHT; row++)
     {
         renderFrame(lockedBoard, displayBoard, pieces[pieceIndex], obj);
+        checkBoardRows(lockedBoard);
         if (objectFall(lockedBoard, pieces[pieceIndex], obj) == -1)
         {
             break;
@@ -327,6 +366,9 @@ int userControllPanel(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT]
 
             case 's':
                 objectFall(lockedBoard, pieces[pieceIndex], obj);
+                break;
+            case 'w':
+                rotate90(pieces[pieceIndex]);
                 break;
 
             default:
