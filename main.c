@@ -14,6 +14,11 @@ struct object
     int x;
     int y;
 };
+struct gameStats
+{
+    int score;
+    int isRunning;
+};
 static struct termios orig_termios;
 int isRunning = 1;
 
@@ -100,7 +105,7 @@ void initBoard(char board[HEIGHT][WIDTH])
     }
 }
 
-void checkBoardRows(char lockedBoard[HEIGHT][WIDTH])
+void checkBoardRows(char lockedBoard[HEIGHT][WIDTH], struct gameStats *gameStats)
 {
     // so we start outer loop that equals 13 with i--
     // create isfull variable
@@ -129,7 +134,20 @@ void checkBoardRows(char lockedBoard[HEIGHT][WIDTH])
                     lockedBoard[row][col] = lockedBoard[row - 1][col];
                 }
             }
+            gameStats->score++;
         }
+    }
+}
+
+void checkBoardTop(char lockedBoard[HEIGHT][WIDTH], struct gameStats *gameStats)
+{
+    for (int col = 1; col < WIDTH - 1; col++)
+    {
+        if (lockedBoard[1][col] == '#')
+        {
+            gameStats->isRunning = -1;
+        }
+        // printf("FROM CHECK BOARD IS RUNNING: %d\n", gameStats->isRunning);
     }
 }
 // Objects
@@ -215,7 +233,7 @@ int objectLeft(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *o
     }
 }
 
-int rotate90(char piece[16])
+int rotate90(char lockedBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
 {
     char tempPiece[16] = "...............";
     // loop throu piece find where Xs are and generate new index with 90 degree formula.
@@ -231,13 +249,19 @@ int rotate90(char piece[16])
             }
         }
     }
-    // ovveriting old array with new elements
-    for (int i = 0; i < 16; i++)
+
+    if (checkPiece(lockedBoard, tempPiece, obj->x, obj->y) == 1)
     {
-        piece[i] = tempPiece[i];
+        // ovveriting old array with new elements
+        for (int i = 0; i < 16; i++)
+        {
+            piece[i] = tempPiece[i];
+        }
+
+        return 1;
     }
 
-    return 1;
+    return -1;
 }
 
 // RENDER
@@ -252,7 +276,7 @@ void rebuildDisplayBoard(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIG
         }
     }
 }
-void renderFrame(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], struct object *obj)
+void renderFrame(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char piece[16], struct object *obj, struct gameStats *gameStats)
 {
     // rebuilding display board here
     rebuildDisplayBoard(lockedBoard, displayBoard);
@@ -262,7 +286,12 @@ void renderFrame(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDT
 
     printf("\033[H\033[J");
     printBoard(displayBoard);
-    usleep(99999);
+    printf("\n");
+    printf("\n");
+    printf("\n");
+    printf("\n");
+    printf("Score: %d\n", gameStats->score);
+    usleep(100);
 }
 
 // TERMINAL
@@ -308,7 +337,7 @@ void enableRawSettings()
 
     /* put terminal in raw mode after flushing */
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
-        error("can't set raw mode");
+        printf("can't set raw mode");
 }
 
 void enableRawMode()
@@ -319,7 +348,7 @@ void enableRawMode()
     }
     else
     {
-        error("error while setting original termios");
+        printf("error while setting original termios");
     }
 }
 
@@ -331,50 +360,58 @@ void disableRawMode()
     }
     else
     {
-        error("error on disable raw mode function.");
+        printf("error on disable raw mode function.");
     }
 }
 
-int userControllPanel(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char userInput, int pieceIndex, struct object *obj)
+int userControllPanel(char lockedBoard[HEIGHT][WIDTH], char displayBoard[HEIGHT][WIDTH], char userInput, int pieceIndex, struct object *obj, struct gameStats *gameStats)
 {
     for (int row = 0; row < HEIGHT; row++)
     {
-        renderFrame(lockedBoard, displayBoard, pieces[pieceIndex], obj);
-        checkBoardRows(lockedBoard);
-        if (objectFall(lockedBoard, pieces[pieceIndex], obj) == -1)
+        checkBoardTop(lockedBoard, gameStats);
+        if (gameStats->isRunning == 1)
         {
-            break;
+            renderFrame(lockedBoard, displayBoard, pieces[pieceIndex], obj, gameStats);
+            checkBoardRows(lockedBoard, gameStats);
+            if (objectFall(lockedBoard, pieces[pieceIndex], obj) == -1)
+            {
+                break;
+            }
+
+            if (read(STDIN_FILENO, &userInput, 1) != 0)
+            {
+                if (userInput == 'q')
+                {
+                    disableRawMode();
+                    gameStats->isRunning = -1;
+                    return -1;
+                }
+                char key = checkUserInput(userInput);
+                switch (key)
+                {
+                case 'a':
+                    objectLeft(lockedBoard, pieces[pieceIndex], obj);
+                    break;
+                case 'd':
+                    objectRight(lockedBoard, pieces[pieceIndex], obj);
+                    break;
+
+                case 's':
+                    objectFall(lockedBoard, pieces[pieceIndex], obj);
+                    break;
+                case 'w':
+                    rotate90(lockedBoard, pieces[pieceIndex], obj);
+                    break;
+
+                default:
+                    return -1;
+                    break;
+                }
+            }
         }
-
-        if (read(STDIN_FILENO, &userInput, 1) != 0)
+        else
         {
-            if (userInput == 'q')
-            {
-                disableRawMode();
-                isRunning = 0;
-                return -1;
-            }
-            char key = checkUserInput(userInput);
-            switch (key)
-            {
-            case 'a':
-                objectLeft(lockedBoard, pieces[pieceIndex], obj);
-                break;
-            case 'd':
-                objectRight(lockedBoard, pieces[pieceIndex], obj);
-                break;
-
-            case 's':
-                objectFall(lockedBoard, pieces[pieceIndex], obj);
-                break;
-            case 'w':
-                rotate90(pieces[pieceIndex]);
-                break;
-
-            default:
-                return -1;
-                break;
-            }
+            return -1;
         }
     }
 
@@ -390,22 +427,25 @@ int main()
     srand(time(NULL));
     enableRawMode();
     char userInput = ' ';
+    struct gameStats gameStats;
+    gameStats.isRunning = 1;
+    gameStats.score = 0;
 
-    while (isRunning == 1)
+    while (gameStats.isRunning = 1)
     {
         struct object obj;
         obj.y = 0;
         obj.x = randomXPosition();
         int pieceIndex = randomPiece();
         tcflush(STDIN_FILENO, TCIFLUSH); // this func is used to clear input queue.
-        if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj) != -1)
+        if (userControllPanel(lockedBoard, displayBoard, userInput, pieceIndex, &obj, &gameStats) != -1)
         {
 
-            isRunning = 1;
+            gameStats.isRunning = 1;
         }
         else
         {
-            isRunning = 0;
+            gameStats.isRunning = -1;
             disableRawMode();
             return 0;
         }
